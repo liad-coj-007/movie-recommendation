@@ -84,4 +84,48 @@ class TwoTowerModel(BaseEstimator, RegressorMixin):
             verbose=0
         )
 
-        return predictions.ravel()
+        return predictions.rave()
+    
+    def find_recommendations(self, user_ids, num_of_recomands=20):
+        
+        user_input = (
+            self.user_features
+            .loc[user_ids]
+            .to_numpy(dtype=np.float32)
+        )
+
+
+        user_embeddings = self.model.user_tower(
+            user_input
+        )
+
+        movie_embeddings = self.model.movie_tower(
+            self.movie_features.to_numpy(dtype=np.float32)
+        )
+
+        scores = tf.matmul(
+            user_embeddings,
+            movie_embeddings,
+            transpose_b=True
+        )
+
+        top_movies = tf.math.top_k(
+            scores,
+            k=num_of_recomands
+        )
+
+        recommendations = []
+
+        for i, user_id in enumerate(user_ids):
+
+            movie_indices = top_movies.indices[i].numpy()
+
+            movie_ids = self.movie_features.index[
+                movie_indices
+            ]
+
+            recommendations.append(
+                (user_id, movie_ids)
+            )
+
+        return recommendations
