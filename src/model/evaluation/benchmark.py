@@ -110,7 +110,8 @@ def testing(model, X_train,y_train, X_test, y_test):
 
 def benchmark_throughput(model, available_user_ids, batch_size=64, num_batches=200):
     """
-    מבצעת בדיקת עומס (Stress Test) ומחשבת Throughput ו-Latency Percentiles.
+    Benchmark the throughput of the model by simulating multiple requests for recommendations.
+    
     """
     print("\n===========================================================================")
     print(f"Starting Benchmark: {num_batches} requests | Batch size: {batch_size} users/request")
