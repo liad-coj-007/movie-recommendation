@@ -1,0 +1,2 @@
+pip show tensorflow nvidia-cuda-runtime-cu11 nvidia-cudnn-cu11
+pip list | grep 'nvidia-.*-cu12'
