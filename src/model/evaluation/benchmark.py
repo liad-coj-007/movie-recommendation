@@ -1,66 +1,25 @@
-import joblib
 from src.model.architectures.two_tower_model import TwoTowerModel
 import time
 import pandas as pd
 import os
 import numpy as np
 
-from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.model_selection import train_test_split
 import kagglehub
-
-PATH = kagglehub.dataset_download("grouplens/movielens-20m-dataset")
-
-
-def read_movies(movies):
-    mlb = MultiLabelBinarizer()
-    genre_features = mlb.fit_transform(movies['genres'].str.split('|'))
-    genre_df = pd.DataFrame(
-        genre_features,
-        columns=mlb.classes_,
-        index=movies["movieId"]
-    )
-    return genre_df
+from src.model.utils.utils import *
 
 
-def build_user_genre_profile_matrix(movies, ratings):
-    """
-    building a user-genre profile matrix where each row corresponds to 
-    a user and each column corresponds to a genre. 
-    The values in the matrix represent the average rating given 
-    by the user to movies of that genre.
-    """
-    
-    user_genre = ratings.merge(
-        movies,
-        left_on="movieId",
-        right_index=True
-    )
-    
-    genre_columns = movies.columns.to_list()
-    user_genre_melted = user_genre.melt(
-        id_vars=["userId", "rating"], 
-        value_vars=genre_columns, 
-        var_name="genre", 
-        value_name="present"
-    )
-    user_genre_melted = user_genre_melted[user_genre_melted["present"] == 1]
 
-    user_genre_matrix = user_genre_melted.groupby(["userId", "genre"])["rating"].mean().unstack()
 
-    genre_means = user_genre_matrix.mean()
-    user_genre_matrix = user_genre_matrix.fillna(genre_means)
-    
-    return user_genre_matrix
+
+
+
 
 
 def learning():
-    print("Loading data...")
-    movies_raw = pd.read_csv(os.path.join(PATH, "movie.csv"))
-    movies = read_movies(movies_raw)
-    ratings = pd.read_csv(os.path.join(PATH, "rating.csv"), nrows=500_000)
+    
+    movies,ratings = load_kaggle()
 
-    print("Building user feature matrix...")
     users_features = build_user_genre_profile_matrix(movies, ratings)
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -111,7 +70,7 @@ def testing(model, X_train,y_train, X_test, y_test):
 def benchmark_throughput(model, available_user_ids, batch_size=64, num_batches=200):
     """
     Benchmark the throughput of the model by simulating multiple requests for recommendations.
-    
+
     """
     print("\n===========================================================================")
     print(f"Starting Benchmark: {num_batches} requests | Batch size: {batch_size} users/request")
