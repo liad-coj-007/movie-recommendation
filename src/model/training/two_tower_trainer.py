@@ -100,19 +100,7 @@ class TwoTowerTrainer:
             batch_size=self.batch_size,
         )
 
-    def predict(self,user_ids, movie_ids):
-        user_ids_tensor = tf.constant(user_ids, dtype=tf.int32)
-        movie_ids_tensor = tf.constant(movie_ids, dtype=tf.int32)
 
-        user_indices = self._user_id_to_idx.lookup(user_ids_tensor)
-        movie_indices = self._movie_id_to_idx.lookup(movie_ids_tensor)
-
-        inputs = {
-            "user": tf.gather(self._user_tensor, user_indices),
-            "movie": tf.gather(self._movie_tensor, movie_indices)
-        }
-        predicted_scores = self.model(inputs, training=False).numpy()
-        return predicted_scores 
 
     def save_model(self, save_dir="artifacts"):
         today = date.today().strftime("%Y-%m-%d")

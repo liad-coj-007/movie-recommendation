@@ -1,5 +1,5 @@
 
-from src.model.architectures.two_tower_trainer import TwoTowerTrainer
+from src.model.training.two_tower_trainer import TwoTowerTrainer
 import kagglehub
 import pandas as pd
 import os
@@ -12,9 +12,9 @@ from src.model.utils.utils import *
 
 def learning():
     ratings_path = kagglehub.dataset_download("grouplens/movielens-20m-dataset") + "/rating.csv"
-    movies,ratings = load_kaggle()
+    movies,ratings = load_kaggle(sample_size_for_matrix=1_000_000)
     user_matrix = build_user_genre_profile_matrix(movies, ratings)
-    LIMIT_ROWS = 500_000
+    LIMIT_ROWS = 1_000_000
     BATCH_SIZE = 2048
     num_batches = LIMIT_ROWS // BATCH_SIZE
 
@@ -26,7 +26,7 @@ def learning():
         ignore_errors=True,
         select_columns=["userId", "movieId", "rating"]
     )
-    
+
     ratings_ds = ratings_ds.take(num_batches)
 
     model = TwoTowerTrainer(
