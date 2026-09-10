@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import date 
 from sklearn.base import BaseEstimator, RegressorMixin
 from src.model.architectures.two_tower import TwoTower
 
