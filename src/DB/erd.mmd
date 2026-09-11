@@ -3,16 +3,16 @@ erDiagram
     Genre ||--|{ HasGenre : "belongs_to"
     User ||--|{ Rating : "rates"
     Movie ||--|{ Rating : "is_rated"
-    
+
     User ||--|{ UserGenreRating : "has"
     Genre ||--|{ UserGenreRating : "evaluates"
 
     User {
         int userId PK
-        string userName 
-        string email  
-        string password
-        int age 
+        string userName "NOT NULL"
+        string email  "NOT NULL, UNIQUE"
+        string password "NOT NULL"
+        int age "CHECK (age >= 0)"
     }
 
     Genre {
@@ -23,7 +23,7 @@ erDiagram
     Movie {
         int movieID PK
         string movieName "NOT NULL" 
-        Date releaseDate "NOT NULL"
+        datetime releaseDate "NOT NULL , UNIQUE"
     }
 
 
@@ -37,7 +37,7 @@ erDiagram
         int userID FK
         int movieID FK
         int rating "CHECK (rating >= 1 AND rating <= 5)"
-        date timestamp "NOT NULL"
+        datetime timestamp "NOT NULL"
     }
 
     UserGenreRating {
