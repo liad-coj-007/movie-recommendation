@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -87,6 +86,7 @@ func CreateTables(conn *pgxpool.Pool) error {
 		userId BIGINT NOT NULL REFERENCES users(userId) ON DELETE CASCADE,
 		movieId BIGINT NOT NULL REFERENCES movies(movieId) ON DELETE CASCADE,
 		rating DECIMAL CHECK (rating >=0 AND rating<=5) NOT NULL,
+		rated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
 		PRIMARY KEY (userId,movieId)
 	);`,
 	`
@@ -98,7 +98,7 @@ func CreateTables(conn *pgxpool.Pool) error {
 	);`,
 
 	`	
-	CREATE TABLE IF NOT EXISTS UserGenreRating (
+	CREATE TABLE IF NOT EXISTS HasGenre (
 		movieId BIGINT NOT NULL REFERENCES movies(movieId) ON DELETE CASCADE,
 		genreId BIGINT NOT NULL REFERENCES generes(genreId) ON DELETE CASCADE,
 		PRIMARY KEY (movieID,genreId)
