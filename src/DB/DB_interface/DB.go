@@ -83,6 +83,16 @@ func mapErrorToStatus(err error) Status {
 }
 
 
+func mapExecToStatus(tag pgconn.CommandTag, err error) Status {
+	if err != nil {
+		return mapErrorToStatus(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return NotExists
+	}
+	return Success
+}
+
 
 func ConnectDB() *pgxpool.Pool {
 	_ = godotenv.Load()
@@ -223,8 +233,8 @@ type user struct {
 
 func AddUser(conn *pgxpool.Pool, user user) Status {
 	query := "INSERT INTO users (user_name,email,password,age) VALUES ($1,$2,$3,$4)"
-	_, err := conn.Exec(context.Background(),query,user.userName,user.email,user.password,user.age)
-	return mapErrorToStatus(err)
+	tag, err := conn.Exec(context.Background(),query,user.userName,user.email,user.password,user.age)
+	return mapExecToStatus(tag,err)
 }
 
 
@@ -248,6 +258,21 @@ func GetUserByName(conn *pgxpool.Pool , userName string) (*user,Status){
 	return &user,Success
 }
 
+func DeleteUserByID(conn *pgxpool.Pool, user_id int64) Status{
+	query := "DELETE * FROM users WHERE user_id = $1"
+	tag, err := conn.Exec(context.Background(),query,user_id)
+	return mapExecToStatus(tag,err)
+}
+
+func DeleteUserByName(conn  *pgxpool.Pool, userName string) Status {
+	query := "DELETE * FROM users WHERE user_name = $1"
+	tag,err := conn.Exec(context.Background(),query,userName)
+	return mapExecToStatus(tag,err)
+}
+
+
+
+
 type movie struct {
 	movieId int64
 	title string
@@ -257,8 +282,8 @@ type movie struct {
 
 func AddMovie(conn  *pgxpool.Pool, movie movie) Status {
 	query := "INSERT INTO movies (title ,release_date) VALUES ($1,$2)"
-	_, err := conn.Exec(context.Background(),query,movie.title,movie.releaseDate)
-	return mapErrorToStatus(err)
+	tag, err := conn.Exec(context.Background(),query,movie.title,movie.releaseDate)
+	return mapExecToStatus(tag,err)
 }
 
 func GetMovieByID(conn *pgxpool.Pool, movieId int64) (*movie,Status) {
@@ -283,6 +308,18 @@ func GetMovieByTitle(conn  *pgxpool.Pool, title string ) (*movie,Status) {
 	return &movie,Success
 }
 
+func DeleteMovieByID(conn *pgxpool.Pool , movieId int64) Status{
+	query := "DELETE FROM movies WHERE movie_id = $1"
+	tag,err := conn.Exec(context.Background(),query,movieId)
+	return mapExecToStatus(tag,err)
+}
+
+func DeleteMovieByTitle(conn *pgxpool.Pool, title string ) Status{
+	query := "DELETE  FROM movies WHERE title = $1"
+	tag, err := conn.Exec(context.Background(),query,title)
+	return mapExecToStatus(tag,err)
+}
+
 type genre struct {
 	genreId int64
 	genreName string
@@ -290,8 +327,8 @@ type genre struct {
 
 func AddGenre(conn  *pgxpool.Pool, genre genre) Status {
 	query := "INSERT INTO genres (genre_name) VALUES ($1)"
-	_, err := conn.Exec(context.Background(),query,genre.genreName)
-	return mapErrorToStatus(err)
+	tag, err := conn.Exec(context.Background(),query,genre.genreName)
+	return mapExecToStatus(tag,err)
 }
 
 func GetGenreByID(conn  *pgxpool.Pool , genreId int64) (*genre, Status) {
@@ -314,5 +351,18 @@ func GetGenreByName(conn  *pgxpool.Pool,genreName string) (*genre,Status) {
 	}
 	return &genre,Success
 }
+
+func DeleteGenreByID(conn *pgxpool.Pool,genreId int64) Status {
+	query := "DELETE  FROM genres WHERE genre_id = $1"
+	tag , err := conn.Exec(context.Background(),query,genreId)
+	return mapExecToStatus(tag,err)
+}
+
+func DeleteGenreByName(conn *pgxpool.Pool,genreName string) Status {
+	query := "DELETE  FROM genres WHERE genre_name = $1"
+	tag,err := conn.Exec(context.Background(),query,genreName)
+	return mapExecToStatus(tag,err)
+}
+
 
 

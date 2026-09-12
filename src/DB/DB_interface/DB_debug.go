@@ -2,7 +2,6 @@ package db
 
 import "fmt"
 
-// String מחזיר את שם הסטטוס לפי ערך ה-Enum
 func (s Status) String() string {
 	switch s {
 	case Success:
