@@ -1,48 +1,46 @@
 erDiagram
-    Movie ||--|{ HasGenre : "has"
-    Genre ||--|{ HasGenre : "belongs_to"
-    User ||--|{ Rating : "rates"
-    Movie ||--|{ Rating : "is_rated"
+    users ||--|{ ratings : "rates"
+    movies ||--|{ ratings : "is_rated"
 
-    User ||--|{ UserGenreRating : "has"
-    Genre ||--|{ UserGenreRating : "evaluates"
+    movies ||--|{ movie_genres : "has"
+    genres ||--|{ movie_genres : "belongs_to"
 
-    User {
-        int userId PK
-        string userName "NOT NULL"
-        string email  "NOT NULL, UNIQUE"
+    users ||--|{ user_genre_ratings : "has"
+    genres ||--|{ user_genre_ratings : "evaluates"
+
+    users {
+        bigint id PK
+        string user_name "NOT NULL, UNIQUE"
+        string email "NOT NULL, UNIQUE"
         string password "NOT NULL"
-        int age "CHECK (age >= 0)"
+        int age "CHECK (age >= 0 AND age <= 120)"
     }
 
-    Genre {
-        int genreID PK
-        string genreName "NOT NULL"
+    movies {
+        bigint id PK
+        string movie_name "NOT NULL, UNIQUE"
+        date release_date "NOT NULL"
     }
 
-    Movie {
-        int movieID PK
-        string movieName "NOT NULL" 
-        datetime e "NOT NULL"
+    genres {
+        bigint id PK
+        string genre_name "NOT NULL, UNIQUE"
     }
 
-
-
-    HasGenre {
-        int movieID FK
-        int genreID FK
+    ratings {
+        bigint user_id PK, FK
+        bigint movie_id PK, FK
+        decimal rating "CHECK (rating >= 0 AND rating <= 5)"
+        timestamptz rated_at "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    Rating {
-        int userID FK
-        int movieID FK
-        int rating "CHECK (rating >= 1 AND rating <= 5)"
-        datetime timestamp "NOT NULL"
+    movie_genres {
+        bigint movie_id PK, FK
+        bigint genre_id PK, FK
     }
 
-    UserGenreRating {
-        int genreID FK
-        int userID FK
-        decimal avgRating "CHECK (avgRating >= 0 AND avgRating <= 5)"
+    user_genre_ratings {
+        bigint user_id PK, FK
+        bigint genre_id PK, FK
+        decimal avg_rating "CHECK (avg_rating >= 0 AND avg_rating <= 5)"
     }
-
