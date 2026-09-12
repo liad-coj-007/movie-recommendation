@@ -1,12 +1,14 @@
-package db 
+package db
 
 import (
-	"os"
-	"log"
+	"context"
 	"fmt"
+	"log"
+	"os"
+
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
-	"context"
 )
 
 func ConnectDB() *pgxpool.Pool {
@@ -31,4 +33,18 @@ func ConnectDB() *pgxpool.Pool {
 	}
 
 	return pool
+}
+
+func BuildTxn(conn *pgxpool.Pool,ctx context.Context ) (pgx.Tx,Status) {
+	tx,err := conn.Begin(ctx)
+	return tx,mapErrorToStatus(err)
+}
+
+func commit(tx pgx.Tx, ctx context.Context) Status {
+	// commit
+	if err := tx.Commit(ctx); err != nil {
+		return mapErrorToStatus(err)
+	}
+
+	return Success
 }
