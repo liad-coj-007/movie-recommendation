@@ -41,7 +41,7 @@ func CreateTables(conn *pgxpool.Pool) error {
     `
     CREATE TABLE IF NOT EXISTS movies (
         movie_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        title VARCHAR(20) CHECK( LENGTH(title) > 0) UNIQUE NOT NULL,
+        title VARCHAR(255) CHECK( LENGTH(title) > 0)  NOT NULL,
         release_date DATE NOT NULL
     );`,
     `
