@@ -33,7 +33,7 @@ func GetUserByName(conn *pgxpool.Pool, userName string) (*user, Status) {
 }
 
 func DeleteUserByID(conn *pgxpool.Pool, user_id int64) Status {
-	query := "DELETE * FROM users WHERE user_id = $1"
+	query := "DELETE FROM users WHERE user_id = $1"
 	tag, err := conn.Exec(context.Background(), query, user_id)
 	return mapExecToStatus(tag, err)
 }

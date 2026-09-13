@@ -33,7 +33,7 @@ func CreateTables(conn *pgxpool.Pool) error {
     CREATE TABLE IF NOT EXISTS users
     (
         user_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        user_name VARCHAR(20) CHECK (user_name ~ '^[a-zA-Z][a-zA-Z0-9]*$') UNIQUE NOT NULL,
+        user_name VARCHAR(20) CHECK (user_name ~ '^[a-zA-Z0-9][a-zA-Z0-9_-]{2,19}$') UNIQUE NOT NULL,
         email TEXT CHECK (email ~* '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$') UNIQUE NOT NULL,
         password TEXT NOT NULL,
         age INT CHECK (age >= 0 AND age <= 120) NOT NULL
@@ -83,6 +83,7 @@ func CreateTables(conn *pgxpool.Pool) error {
 
     return executeQueries(conn, relations)
 }
+
 
 func ClearTable(conn *pgxpool.Pool ,tableName string ) error {
 	query := fmt.Sprintf("DELETE FROM %s;", tableName)
