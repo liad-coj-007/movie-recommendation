@@ -7,7 +7,7 @@ import (
 )
 
 func AddUser(conn *pgxpool.Pool, user user) Status {
-	query := "INSERT INTO users (user_name,email,password,age) VALUES ($1,$2,$3,$4)"
+	query := `INSERT INTO users (user_name,email,password,age) VALUES ($1,$2,$3,$4) `
 	tag, err := conn.Exec(context.Background(), query, user.userName, user.email, user.password, user.age)
 	return mapExecToStatus(tag, err)
 }
@@ -35,12 +35,6 @@ func GetUserByName(conn *pgxpool.Pool, userName string) (*user, Status) {
 func DeleteUserByID(conn *pgxpool.Pool, user_id int64) Status {
 	query := "DELETE * FROM users WHERE user_id = $1"
 	tag, err := conn.Exec(context.Background(), query, user_id)
-	return mapExecToStatus(tag, err)
-}
-
-func DeleteUserByName(conn *pgxpool.Pool, userName string) Status {
-	query := "DELETE * FROM users WHERE user_name = $1"
-	tag, err := conn.Exec(context.Background(), query, userName)
 	return mapExecToStatus(tag, err)
 }
 
@@ -165,4 +159,18 @@ func UpsertRating(conn *pgxpool.Pool, userId int64, movieId int64, rating int) S
 
 	return commit(tx,ctx)
 }
+
+func AddMovieGenres(conn *pgxpool.Pool, movieId int64 , genreIdList []int64) Status {
+	query := `
+		INSERT INTO movie_genres (movie_id, genre_id)
+		SELECT $1, UNNEST($2::bigint[])
+		ON CONFLICT (movie_id, genre_id) DO NOTHING;
+	`
+	_,err := conn.Exec(context.Background(),query,movieId,genreIdList)
+	return mapErrorToStatus(err)
+}
+
+
+
+
 
