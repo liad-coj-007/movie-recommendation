@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.base import BaseEstimator, RegressorMixin
-from src.model.architectures.two_tower import TwoTower
+from model.architectures.research_architectures.two_tower import TwoTower
 
 
 class TwoTowerModel(BaseEstimator, RegressorMixin):

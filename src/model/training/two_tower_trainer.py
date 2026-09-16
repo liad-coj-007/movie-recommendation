@@ -1,116 +1,109 @@
-import numpy as np
-import pandas as pd
+
 import tensorflow as tf
-from src.model.architectures.two_tower import TwoTower
+from src.model.architectures.production_architectures.two_tower import TwoTower
 from datetime import date   
 import pickle
-import os 
+import os
+import pandas as pd
+import numpy as np
+
+## generator function
+def parquet_generator(data_dir="data_chunks", batch_size=1024):
+    """
+    get the Parquet files in batches
+    """
+    files = sorted(
+        [
+            os.path.join(data_dir, f)
+            for f in os.listdir(data_dir)
+            if f.endswith(".parquet")
+        ]
+    )
+
+    for file_path in files:
+        df = pd.read_parquet(file_path)
+        for i in range(0, len(df), batch_size):
+            batch = df.iloc[i : i + batch_size]
+            features = {
+                "user_id": batch["user_id"].values.astype(np.int64),
+                "movie_id": batch["movie_id"].values.astype(np.int64),
+                "genre_ids": tf.ragged.constant(batch["genre_ids"].tolist(), dtype=tf.int64),
+            }
+            labels = batch["rating"].values.astype(np.float32)
+            yield features, labels
 
 class TwoTowerTrainer:
-    def __init__(self, user_features, movie_features, embedding_dim=64, learning_rate=0.001,epochs=5,batch_size=1024):
-        self.user_features = user_features
-        self.movie_features = movie_features
+    def __init__(self, user_bucket=50000, movie_bucket=20000, genre_buckets=100,
+                 embedding_dim=64, learning_rate=0.001,epochs=5,batch_size=1024):
+        self.user_bucket = user_bucket
+        self.movie_bucket = movie_bucket
+        self.genre_bucket = genre_buckets
         self.epochs = epochs
         self.batch_size = batch_size
         self.embedding_dim = embedding_dim
-
-        default_user_vec = np.mean(self.user_features.values, axis=0, keepdims=True)
-        default_movie_vec = np.mean(self.movie_features.values, axis=0, keepdims=True)
-
-        full_user_matrix = np.vstack([default_user_vec, self.user_features.values])
-        full_movie_matrix = np.vstack([default_movie_vec, self.movie_features.values])
-
-        self._user_tensor = tf.constant(full_user_matrix, dtype=tf.float32)
-        self._movie_tensor = tf.constant(full_movie_matrix, dtype=tf.float32)
-
-        user_keys = (
-            self.user_features.index.values.astype(np.int32)
-            if self.user_features.index.name == 'userId' or 'userId' not in self.user_features.columns
-            else self.user_features['userId'].values.astype(np.int32)
-        )
-        movie_keys = (
-            self.movie_features.index.values.astype(np.int32)
-            if self.movie_features.index.name == 'movieId' or 'movieId' not in self.movie_features.columns
-            else self.movie_features['movieId'].values.astype(np.int32)
-        )
-
-        self._user_id_to_idx = tf.lookup.StaticHashTable(
-            tf.lookup.KeyValueTensorInitializer(
-                keys=tf.constant(user_keys, dtype=tf.int32),
-                values=tf.constant(np.arange(1, len(self.user_features) + 1), dtype=tf.int32)
-            ),
-            default_value=0
-        )
-        
-        self._movie_id_to_idx = tf.lookup.StaticHashTable(
-            tf.lookup.KeyValueTensorInitializer(
-                keys=tf.constant(movie_keys, dtype=tf.int32),
-                values=tf.constant(np.arange(1, len(self.movie_features) + 1), dtype=tf.int32)
-            ),
-            default_value=0
-        )
-
-        self.model = TwoTower(embedding_dim=embedding_dim)
+        self.model = TwoTower(user_bucket,movie_bucket,genre_buckets,embedding_dim=embedding_dim)
         self.learning_rate = learning_rate
 
-    def _prepare_batch(self, features, label=None):
-        """A map function that converts CSV IDs into features during streaming."""
-        
-        user_ids = tf.cast(features["userId"], tf.int32)
-        movie_ids = tf.cast(features["movieId"], tf.int32)
-
-        user_indices = self._user_id_to_idx.lookup(user_ids)
-        movie_indices = self._movie_id_to_idx.lookup(movie_ids)
-
+    def _process_features(self, features, label=None):
         inputs = {
-            "user": tf.gather(self._user_tensor, user_indices),
-            "movie": tf.gather(self._movie_tensor, movie_indices)
+            "user_id": tf.cast(features["user_id"], tf.int32),
+            "movie_id": tf.cast(features["movie_id"], tf.int32),
+            "genre_ids": features["genre_ids"]    
         }
 
         if label is not None:
-            return inputs, tf.cast(label, tf.float32)
+            return inputs,tf.cast(label,tf.float32)
+        
         return inputs
 
-    def fit(self, dataset, validation_data=None):
+
+    def fit(self,generator_fn=parquet_generator):
         """Train the model on the given tf.data.Dataset"""
+
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
             loss="mse",
             metrics=[tf.keras.metrics.RootMeanSquaredError()]
         )
 
-        train_ds = (
-            dataset
-            .map(self._prepare_batch, num_parallel_calls=tf.data.AUTOTUNE)
-            .prefetch(tf.data.AUTOTUNE)
+        output_signature = (
+            {
+                "user_id": tf.TensorSpec(shape=(None,), dtype=tf.int64),
+                "movie_id": tf.TensorSpec(shape=(None,), dtype=tf.int64),
+                "genre_ids": tf.RaggedTensorSpec(shape=(None, None), dtype=tf.int64),
+            },
+            tf.TensorSpec(shape=(None,), dtype=tf.float32)
         )
 
-        val_ds = None
-        if validation_data is not None:
-            val_ds = (
-                validation_data
-                .map(self._prepare_batch, num_parallel_calls=tf.data.AUTOTUNE)
-                .prefetch(tf.data.AUTOTUNE)
+
+
+        train_ds = (
+            tf.data.Dataset.from_generator(
+                lambda:generator_fn(batch_size=self.batch_size),
+                output_signature=output_signature
             )
+            .map(self._process_features, num_parallel_calls=tf.data.AUTOTUNE)
+            .prefetch(tf.data.AUTOTUNE)  
+        )
 
         return self.model.fit(
             train_ds,
-            validation_data=val_ds,
-            epochs=self.epochs,
-            batch_size=self.batch_size,
+            epochs=self.epochs
         )
 
 
 
     def save_model(self, save_dir="artifacts"):
+
         today = date.today().strftime("%Y-%m-%d")
         model_path = f"{save_dir}/two_tower_model_{today}/"
         os.makedirs(model_path, exist_ok=True)
         self.model.save_weights(os.path.join(model_path, "weights.weights.h5"))
 
         metadata = {
-            "user_features": self.user_features,
-            "movie_features": self.movie_features,
+            "user_bucket": self.user_bucket,
+            "movie_bucket" : self.movie_bucket,
+            "genre_bucket" : self.genre_bucket,
             "embedding_dim": self.embedding_dim,
             "learning_rate": self.learning_rate,
             "epochs": self.epochs,

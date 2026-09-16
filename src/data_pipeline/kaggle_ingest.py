@@ -127,7 +127,6 @@ def main():
     path = kagglehub.dataset_download(DATASET_PATH)
     
     conn = connect_db()
-    
     load_movies_to_sql(conn, path) 
     print("✨ Finish load movies & genres\n")
     

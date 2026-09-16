@@ -4,7 +4,6 @@ import os
 from sklearn.preprocessing import MultiLabelBinarizer
 import pandas as pd
 import kagglehub
-import tensorflow as tf
 import numpy as np
 
 def read_movies(movies):
@@ -55,3 +54,6 @@ def load_kaggle(sample_size_for_matrix=500_000):
                           usecols=["userId", "movieId", "rating"])
 
     return movies, ratings
+
+
+  

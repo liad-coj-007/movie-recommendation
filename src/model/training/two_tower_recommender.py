@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from src.model.architectures.two_tower import TwoTower
+from model.architectures.research_architectures.two_tower import TwoTower
 import pickle
 import os 
 

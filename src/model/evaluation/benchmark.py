@@ -1,19 +1,9 @@
-from src.model.architectures.two_tower_model import TwoTowerModel
+from model.architectures.research_architectures.two_tower_model import TwoTowerModel
 import time
 import pandas as pd
-import os
 import numpy as np
-
 from sklearn.model_selection import train_test_split
-import kagglehub
 from src.model.utils.utils import *
-
-
-
-
-
-
-
 
 
 def learning():
