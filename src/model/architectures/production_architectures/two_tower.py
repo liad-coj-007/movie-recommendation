@@ -68,3 +68,12 @@ class TwoTower(tf.keras.Model):
 
         score = tf.reduce_sum(user_embedding * movie_embedding, axis=1)
         return score
+    def get_embeddings(self,user_data = None,movie_data = None):
+        user_embeddings = None
+        movie_embeddings = None
+        if user_data is not None:
+            user_embeddings = self.user_tower(user_data)
+        if movie_data is  not None:
+            movie_embeddings = self.movie_tower(movie_data)
+        return user_embeddings,movie_embeddings
+    
