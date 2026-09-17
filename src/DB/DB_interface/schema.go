@@ -26,7 +26,22 @@ var relations = []string{
     "ratings", "user_genre_ratings", "movie_genres",
 }
 
+func CreateIdxs(conn *pgxpool.Pool) error {
+    indexes := []string{
+    `CREATE INDEX IF NOT EXISTS idx_ratings_rated_at ON ratings(rated_at DESC);`,
+    `CREATE INDEX IF NOT EXISTS idx_ratings_movie_id ON ratings(movie_id);`,
+    `CREATE INDEX IF NOT EXISTS idx_movie_genres_genre_id ON movie_genres(genre_id);`,
+    }
+    return executeQueries(conn,indexes)  
+}
 
+func InitDB(conn *pgxpool.Pool )error{
+    err := CreateTables(conn)
+    if err != nil {
+        return err
+    }
+    return CreateIdxs(conn)
+}
 
 func CreateTables(conn *pgxpool.Pool) error {
     tables := []string{`

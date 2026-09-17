@@ -76,71 +76,62 @@ def insert_avg_genre(conn):
         print(f"ERROR: inserting into user_genre_ratings : {e}")
 
 
-def build_export_table(conn):
-    query = """
-    CREATE TABLE IF NOT EXISTS export_ready_ratings AS
-                WITH valid_users AS (
-                    SELECT user_id
-                    FROM ratings
-                    GROUP BY user_id
-                    HAVING COUNT(*) >= 3 
-                    AND COUNT(CASE WHEN rating < 3 THEN 1 END) > 0
-                )
-                SELECT R.user_id AS user_id, 
-                       R.movie_id AS movie_id, 
-                       R.rating AS rating, 
-                       R.rated_at AS rated_at,
-                       ARRAY_AGG(MG.genre_id) AS genre_ids
-                FROM ratings AS R  
-                JOIN valid_users AS UV ON R.user_id = UV.user_id 
-                JOIN movie_genres AS MG ON R.movie_id = MG.movie_id 
-                GROUP BY R.user_id, R.movie_id, R.rated_at, R.rating;
+
+
+def build_learning_table(conn,num_of_rows=2000000):
+
+    valid_users = """
+    WITH valid_users AS (
+        SELECT user_id
+        FROM ratings
+        GROUP BY user_id
+        HAVING COUNT(*) >= 3 
+        AND SUM(CASE WHEN rating < 3 THEN 1 ELSE 0 END) >= 1
+    ) 
     """
 
-    try:
-        with conn.cursor() as cur:
-            cur.execute(query)
-            cur.execute("""
-                CREATE INDEX IF NOT EXISTS idx_export_composite 
-                ON export_ready_ratings(rated_at, user_id);
-                
-            """)
-        conn.commit()
-    except Exception as e:
-        print(f"{e}")
-        raise e
+    query = f"""
+    CREATE TABLE IF NOT EXISTS learning_table AS
+    {valid_users}
+    SELECT R.user_id , R.movie_id , R.rating, R.rated_at, 
+    ARRAY_AGG(MG.genre_id) AS genre_ids , ARRAY_AGG(COALESCE(UG.avg_rating,0)) AS avg_rating_arr
+    FROM ratings AS R JOIN movie_genres AS MG ON R.movie_id = MG.movie_id
+    LEFT JOIN user_genre_ratings AS UG ON R.user_id = UG.user_id AND UG.genre_id = MG.genre_id 
+    WHERE R.user_id IN (
+    SELECT user_id
+    FROM valid_users
+    )
+    GROUP BY  R.user_id , R.movie_id , R.rating,R.rated_at
+    ORDER BY R.rated_at DESC
+    LIMIT {num_of_rows}
+    """
 
-def count_rows_export(conn):
-    count_query = """
-        SELECT COUNT(*)
-        FROM export_ready_ratings
-        """
-    
-    print("📊 Calculating total rows in the database...")
+    learning_idx = """
+    CREATE INDEX IF NOT EXISTS idx_learning ON learning_table (user_id DESC, rated_at DESC);
+    """
+
     with conn.cursor() as cur:
-        cur.execute(count_query)
-        total_rows = cur.fetchone()[0]
-    conn.commit()
-
-    return total_rows
+        cur.execute(query)
+        cur.execute(learning_idx)
+        conn.commit()
 
 
 def get_chunk(conn,last_rated_at,last_user_id,chunk_size):
     with conn.cursor() as cur:
         if last_rated_at is None:
             query = """
-                    SELECT user_id, movie_id, rating, rated_at, genre_ids
-                    FROM export_ready_ratings
-                    ORDER BY rated_at ASC, user_id ASC
+                    SELECT *
+                    FROM learning_table
+                    ORDER BY rated_at DESC, user_id DESC
                     LIMIT %s;
                     """
             cur.execute(query, (chunk_size,))
         else:
             query = """
-                SELECT user_id, movie_id, rating, rated_at, genre_ids
-                FROM export_ready_ratings
-                WHERE (rated_at, user_id) > (%s, %s)
-                ORDER BY rated_at ASC, user_id ASC
+                SELECT *
+                FROM learning_table
+                WHERE (rated_at, user_id) < (%s, %s)
+                ORDER BY rated_at DESC, user_id DESC
                 LIMIT %s;
                 """
             cur.execute(query, (last_rated_at, last_user_id, chunk_size))
@@ -152,7 +143,8 @@ def get_chunk(conn,last_rated_at,last_user_id,chunk_size):
   
 
 
-def export_train_df_to_parquet(conn,output_dir="data_chunks", chunk_size=50000):
+def export_train_df_to_parquet(conn,output_dir="data_chunks", chunk_size=50000,
+                               total_rows=2000000):
     """Fast and interactive export of data from PostgreSQL to Parquet chunks.
 
     - chunk_size defaults to 50,000 rows per file for optimal performance.
@@ -162,7 +154,6 @@ def export_train_df_to_parquet(conn,output_dir="data_chunks", chunk_size=50000):
 
     # Step A: Calculate total row count for an accurate progress bar
 
-    total_rows = count_rows_export(conn)
 
     if total_rows == 0:
         print("⚠️ No data found matching the filtering conditions.")
@@ -170,8 +161,7 @@ def export_train_df_to_parquet(conn,output_dir="data_chunks", chunk_size=50000):
         
     print(
         f"🎯 Found a total of {total_rows:,} rows to export. Starting export process...\n"
-    )
-    
+    )    
     
     chunk_idx = 0
     last_rated_at = None

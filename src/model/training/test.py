@@ -81,6 +81,7 @@ def testing(dir="artifacts"):
             num_users=500,
             top_k=20
         )    
+    
     end_time = time.time()
     print(f"Hit Rate @ 20: {evaluation_hit_rate:.4f}")
     print(f"Hit Rate Time: {end_time - start_time:.2f} seconds")

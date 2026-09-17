@@ -7,13 +7,7 @@ import (
 
 func main() {
 	conn := db.ConnectDB()
-	err := db.CreateTables(conn)
-	if err != nil {
-		fmt.Println("Error creating table:", err)
-		return
-	}
+	db.CreateIdxs(conn)
+	fmt.Println("finished!")
 
-	fmt.Println("Table created successfully:")
-
-	defer conn.Close()
 }

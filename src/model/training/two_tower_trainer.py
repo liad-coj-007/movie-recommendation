@@ -24,11 +24,16 @@ def parquet_generator(data_dir="data_chunks", batch_size=1024):
         df = pd.read_parquet(file_path)
         for i in range(0, len(df), batch_size):
             batch = df.iloc[i : i + batch_size]
+
+            avg_ratings_float = [[float(val) for val in row_list] for row_list in batch["avg_rating_arr"]]
+
             features = {
                 "user_id": batch["user_id"].values.astype(np.int64),
                 "movie_id": batch["movie_id"].values.astype(np.int64),
                 "genre_ids": tf.ragged.constant(batch["genre_ids"].tolist(), dtype=tf.int64),
+                "avg_rating_arr" : tf.ragged.constant(avg_ratings_float, dtype=tf.float32)
             }
+            
             labels = batch["rating"].values.astype(np.float32)
             yield features, labels
 
@@ -48,7 +53,8 @@ class TwoTowerTrainer:
         inputs = {
             "user_id": tf.cast(features["user_id"], tf.int32),
             "movie_id": tf.cast(features["movie_id"], tf.int32),
-            "genre_ids": features["genre_ids"]    
+            "genre_ids": features["genre_ids"],
+            "avg_rating_arr" : features["avg_rating_arr"] 
         }
 
         if label is not None:
@@ -71,6 +77,8 @@ class TwoTowerTrainer:
                 "user_id": tf.TensorSpec(shape=(None,), dtype=tf.int64),
                 "movie_id": tf.TensorSpec(shape=(None,), dtype=tf.int64),
                 "genre_ids": tf.RaggedTensorSpec(shape=(None, None), dtype=tf.int64),
+                "avg_rating_arr" : tf.RaggedTensorSpec(shape=(None,None),dtype=tf.float32)
+
             },
             tf.TensorSpec(shape=(None,), dtype=tf.float32)
         )
